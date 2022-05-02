@@ -1,0 +1,13 @@
+AllCops:
+  TargetRubyVersion: 3.0.2
+
+Layout/LineLength:
+  Enabled: false
+
+Metrics/BlockLength:
+  Enabled: true
+  Exclude:
+    - spec/**/*
+
+Style/NumericLiterals:
+  Enabled: false
