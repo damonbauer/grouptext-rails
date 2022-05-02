@@ -14,7 +14,6 @@ gem 'rails', '~> 6.1.5'
 gem 'rails_autoscale_agent'
 gem 'redis'
 gem 'sidekiq'
-gem 'sqlite3', '~> 1.4'
 
 group :development do
   gem 'listen', '~> 3.3'
