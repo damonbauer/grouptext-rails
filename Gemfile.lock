@@ -156,6 +156,7 @@ GEM
       nokogiri (>= 1.6)
     rails-html-sanitizer (1.4.2)
       loofah (~> 2.3)
+    rails_autoscale_agent (0.11.0)
     railties (6.1.5.1)
       actionpack (= 6.1.5.1)
       activesupport (= 6.1.5.1)
@@ -250,6 +251,7 @@ DEPENDENCIES
   oj
   puma (~> 5.0)
   rails (~> 6.1.5)
+  rails_autoscale_agent
   redis
   rspec-rails (~> 6.0.0.rc1)
   rubocop
