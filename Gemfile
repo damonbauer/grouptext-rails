@@ -6,11 +6,12 @@ git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 ruby '3.0.2'
 
 gem 'chronic'
+gem 'dotenv-rails'
 gem 'faraday'
 gem 'faraday-net_http'
 gem 'oj'
 gem 'puma', '~> 5.0'
-gem "rack-timeout"
+gem 'rack-timeout'
 gem 'rails', '~> 6.1.5'
 gem 'rails_autoscale_agent'
 gem 'redis'

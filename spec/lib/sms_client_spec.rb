@@ -2,12 +2,12 @@
 
 RSpec.describe SmsClient do
   let(:headers) do
-    { Authorization: 'Basic MTMzOTBlOTBhNDQ5MDQ2MzUwODVlMTIyMDQ3MWNkMzM6aVJVM1hvLk1kVmZBUEtXaA==' }
+    { Authorization: 'Basic MTIzNDU2Nzg5MDpwYXNzd29yZA==' }
   end
 
   describe '.lists' do
     it 'fetches all lists for the account' do
-      stub = stub_request(:get, "#{API_ENDPOINT}/get-lists.json")
+      stub = stub_request(:get, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-lists.json")
              .with(headers: headers)
 
       SmsClient.lists
@@ -20,7 +20,7 @@ RSpec.describe SmsClient do
     it 'sends a message to the provided number' do
       message = 'message'
       to = 55555555555
-      stub = stub_request(:post, "#{API_ENDPOINT}/send-sms.json")
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/send-sms.json")
              .with(
                body: {
                  message: message,
@@ -41,7 +41,7 @@ RSpec.describe SmsClient do
       to = 55555555555
       reply_callback = 'https://example.com/reply_callback'
 
-      stub = stub_request(:post, "#{API_ENDPOINT}/send-sms.json")
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/send-sms.json")
              .with(
                body: {
                  message: message,
@@ -64,7 +64,7 @@ RSpec.describe SmsClient do
       message = 'message'
       reply_callback = 'https://example.com/reply_callback'
 
-      stub = stub_request(:post, "#{API_ENDPOINT}/send-sms.json")
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/send-sms.json")
              .with(
                body: {
                  message: message,
@@ -85,7 +85,7 @@ RSpec.describe SmsClient do
     it 'retrieves responses for the provided message ID' do
       message_id = 98765
 
-      stub = stub_request(:post, "#{API_ENDPOINT}/get-sms-responses.json")
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-sms-responses.json")
              .with(
                body: { message_id: message_id },
                headers: headers

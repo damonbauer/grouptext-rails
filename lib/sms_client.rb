@@ -54,10 +54,10 @@ class SmsClient
     private
 
     def client
-      @client ||= Faraday.new(API_ENDPOINT) do |client|
+      @client ||= Faraday.new(ENV['TRANSMIT_API_BASIC_AUTH_URL']) do |client|
         client.request :url_encoded
         client.adapter :net_http
-        client.request :authorization, :basic, '13390e90a44904635085e1220471cd33', 'iRU3Xo.MdVfAPKWh'
+        client.request :authorization, :basic, ENV['TRANSMIT_API_BASIC_AUTH_USERNAME'], ENV['TRANSMIT_API_BASIC_AUTH_PASSWORD']
       end
     end
 
