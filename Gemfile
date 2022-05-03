@@ -15,8 +15,8 @@ gem 'rack-timeout'
 gem 'rails', '~> 6.1.5'
 gem 'rails_autoscale_agent'
 gem 'redis'
-gem 'sentry-ruby'
 gem 'sentry-rails'
+gem 'sentry-ruby'
 gem 'sidekiq'
 
 group :development do
