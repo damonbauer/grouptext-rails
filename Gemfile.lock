@@ -212,6 +212,14 @@ GEM
       parser (>= 3.1.1.0)
     ruby-progressbar (1.11.0)
     ruby2_keywords (0.0.5)
+    sentry-rails (5.3.0)
+      railties (>= 5.0)
+      sentry-ruby-core (~> 5.3.0)
+    sentry-ruby (5.3.0)
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+      sentry-ruby-core (= 5.3.0)
+    sentry-ruby-core (5.3.0)
+      concurrent-ruby
     shellany (0.0.1)
     sidekiq (6.4.2)
       connection_pool (>= 2.2.2)
@@ -265,6 +273,8 @@ DEPENDENCIES
   redis
   rspec-rails (~> 6.0.0.rc1)
   rubocop
+  sentry-rails
+  sentry-ruby
   sidekiq
   simplecov
   webmock

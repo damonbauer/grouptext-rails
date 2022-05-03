@@ -30,7 +30,8 @@ class EventRepliesJob < ApplicationJob
   # Filters `responses` array based on if the response starts with a value in `ACCEPTABLE_REPLIES`
   # @return Array<Object> An array of response objects
   def filtered_responses
-    @api_response['responses'].select do |response|
+    responses = @api_response['responses'] ||= []
+    responses.select do |response|
       response['response'].downcase.strip.start_with?(*ACCEPTABLE_REPLIES)
     end
   end
