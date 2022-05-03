@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-ACCEPTABLE_REPLIES = %w[in out].freeze
+ACCEPTABLE_REPLIES = ['in', 'out'].freeze
 BOT_TOLL_FREE_NUMBER = '18448026390'
+CARRIER_RESERVED_KEYWORDS = ['add', 'cancel', 'continue', 'end', 'help', 'more', 'opt out', 'opt-out', 'optout', 'quit', 'stop', 'unsub', 'unsubscribe'].freeze
 DECISION_OFF_RESPONSE = 'GAME CANCELED'
 DECISION_ON_RESPONSE = 'GAME ON'
-KEYWORD_REPLIES = [*ACCEPTABLE_REPLIES, 'stop', 'create event', 'subscribe'].freeze
-MESSAGE_LIST_REPLIES = ['message list'].freeze
+KEYWORD_REPLIES = ['create event', 'subscribe'].freeze

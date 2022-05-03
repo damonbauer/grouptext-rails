@@ -19,7 +19,7 @@ RSpec.describe EventRepliesJob do
 
       expect(sms_client).to receive(:send_sms)
         .with(message: "#{in_count} are in, #{out_count} are out. Reply #{DECISION_ON_RESPONSE} or #{DECISION_OFF_RESPONSE}",
-              reply_callback: "#{event_decision_reply_url}?selected_list_id=#{selected_list_id}&in_count=#{in_count}&event_creator=#{send_to}",
+              reply_callback: "http://example.com/event_decision_reply?selected_list_id=#{selected_list_id}&in_count=#{in_count}&event_creator=#{send_to}",
               to: send_to)
 
       EventRepliesJob.perform_now(message_id: message_id, selected_list_id: selected_list_id, send_to: send_to)

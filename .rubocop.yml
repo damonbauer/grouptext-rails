@@ -11,3 +11,6 @@ Metrics/BlockLength:
 
 Style/NumericLiterals:
   Enabled: false
+
+Style/WordArray:
+  Enabled: false

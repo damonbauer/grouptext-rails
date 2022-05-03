@@ -2,6 +2,8 @@
 
 # Responsible for messaging the event creator, asking for a decision at the provided deadline
 class EventRepliesJob < ApplicationJob
+  include Utils
+
   queue_as :default
 
   def perform(message_id:, selected_list_id:, send_to:)
@@ -31,9 +33,7 @@ class EventRepliesJob < ApplicationJob
   # @return Array<Object> An array of response objects
   def filtered_responses
     responses = @api_response['responses'] ||= []
-    responses.select do |response|
-      response['response'].downcase.strip.start_with?(*ACCEPTABLE_REPLIES)
-    end
+    responses.select { |response| event_reply?(response['response']) }
   end
 
   # Responsible for counting the number of "IN" and "OUT" responses

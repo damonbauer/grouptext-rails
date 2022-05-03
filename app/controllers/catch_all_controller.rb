@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
 class CatchAllController < ApplicationController
+  include Utils
+
   def handle
-    # If the response looks to be a "keyword reply" (such as "IN", or "STOP"), ignore this reply.
-    return if empty_response? || keyword_reply?
+    return if ignore?
 
     if catch_all_reply?
       # The event creator can either choose to ignore this message, or
@@ -33,23 +34,16 @@ class CatchAllController < ApplicationController
 
   private
 
-  def empty_response?
-    catch_all_params[:response].nil? || catch_all_params[:response].empty?
-  end
-
   def catch_all_reply?
     catch_all_params[:is_catch_all_reply] == 'true'
   end
 
-  # Determines if the value in catch_all_params[:response] is a "keyword reply"
-  # @return [Boolean]
-  def keyword_reply?
-    return unless catch_all_params[:response]
+  def empty_response?
+    catch_all_params[:response].nil? || catch_all_params[:response].strip.empty?
+  end
 
-    # TODO: THIS IS WRONG
-    #
-    # KEYWORD_REPLIES = [*ACCEPTABLE_REPLIES, 'stop', 'create event', 'subscribe'].freeze
-    catch_all_params[:response].downcase.strip.start_with?(*KEYWORD_REPLIES)
+  def ignore?
+    empty_response? || keyword_reply?(catch_all_params[:response]) || event_reply?(catch_all_params[:response])
   end
 
   def catch_all_params
