@@ -45,7 +45,7 @@ module GrouptextRails
     end
 
     config.x.application_job.default_url_options = {
-      host: 'https://4174-2600-1700-322c-5300-4c81-3528-cc51-8b7a.ngrok.io'
+      host: ENV['HEROKU_APP_NAME']
     }
   end
 end
