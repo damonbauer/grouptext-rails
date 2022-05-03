@@ -1,5 +1,5 @@
 AllCops:
-  TargetRubyVersion: 3.0.2
+  TargetRubyVersion: 3.0.4
 
 Layout/LineLength:
   Enabled: false
