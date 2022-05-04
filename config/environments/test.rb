@@ -48,7 +48,8 @@ Rails.application.configure do
   # config.action_view.annotate_rendered_view_with_filenames = true
 
   config.active_job.queue_adapter = :sidekiq
-  Rails.application.routes.default_url_options[:host] = 'https://example.com'
+
+  config.routes.default_url_options[:host] = 'https://example.com'
   config.x.application_job.default_url_options = {
     host: 'https://example.com'
   }

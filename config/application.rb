@@ -43,9 +43,5 @@ module GrouptextRails
       # Don't generate system test files.
       g.system_tests = nil
     end
-
-    config.x.application_job.default_url_options = {
-      host: ENV['HEROKU_APP_NAME']
-    }
   end
 end
