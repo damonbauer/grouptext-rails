@@ -19,14 +19,14 @@ class EventRepliesJob < ApplicationJob
 
   private
 
-  # Takes a string starting with "IN" or "OUT" that also potentially has an integer suffix.
-  # Removes anything that's not a digit.
-  # If the resulting string is empty, returns `1`. Otherwise, returns `#` found in suffix.
-  # @param [String] str The string to collect counts from. Examples: "IN", "IN 2", "IN 4", "OUT", "OUT 3"
+  # Takes a string starting with "IN" or "OUT" with an optional integer suffix. Removes anything that's not a digit.
+  # If the resulting string is empty, returns `1`. Otherwise, returns 1 + `#` found in suffix.
+  # @param [String] str The string to collect counts from. Examples: "IN", "IN +2", "IN +4", "OUT", "OUT +3"
   # @return [Integer]
   def count(str)
+    seed = 1
     match = str.gsub(/\D/, '')
-    match.empty? ? 1 : match.to_i
+    match.empty? ? seed : seed + match.to_i
   end
 
   # Filters `responses` array based on if the response starts with a value in `ACCEPTABLE_REPLIES`
@@ -47,7 +47,5 @@ class EventRepliesJob < ApplicationJob
 
       acc[group] += count(val)
     end
-
-    counts
   end
 end

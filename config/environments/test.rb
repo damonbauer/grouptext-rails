@@ -49,8 +49,9 @@ Rails.application.configure do
 
   config.active_job.queue_adapter = :sidekiq
 
-  config.routes.default_url_options[:host] = 'https://example.com'
   config.x.application_job.default_url_options = {
     host: 'https://example.com'
   }
 end
+
+Rails.application.routes.default_url_options[:host] = 'https://example.com'

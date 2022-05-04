@@ -63,7 +63,7 @@ class MessagesController < ApplicationController
 
     message = SmsClient.send_sms_to_list(
       list_id: messages_params[:selected_list_id],
-      message: "Who's IN for #{subject} #{time} at #{location}? Reply IN, IN 2/3/4/#, OUT, or STOP. Deadline to reply is #{deadline}",
+      message: "Who's IN for #{subject} #{time} at #{location}? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is #{deadline}",
       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}"
     )
 

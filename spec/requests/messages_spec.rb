@@ -66,7 +66,7 @@ RSpec.describe 'Messages' do
 
         expect(sms_client).to receive(:send_sms_to_list).with(
           list_id: selected_list_id,
-          message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN 2/3/4/#, OUT, or STOP. Deadline to reply is in 2 hours",
+          message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 2 hours",
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
         ).and_return({ message_id: message_id }.as_json)
 
@@ -89,7 +89,7 @@ RSpec.describe 'Messages' do
 
       expect(sms_client).to receive(:send_sms_to_list).with(
         list_id: selected_list_id,
-        message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN 2/3/4/#, OUT, or STOP. Deadline to reply is in 5 days",
+        message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 5 days",
         reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
       ).and_return({ message_id: message_id }.as_json)
 

@@ -10,16 +10,18 @@ RSpec.describe EventRepliesJob do
       message_id = 99999
       selected_list_id = 123456
       send_to = 55555555555
-      in_count = 3
+      in_count = 7
       out_count = 1
 
       expect(sms_client).to receive(:sms_responses_for_message)
         .with(message_id: message_id)
-        .and_return({ responses: [{ response: 'IN' }, { response: 'IN 2' }, { response: 'OUT' }] }.as_json)
+        .and_return({ responses: [
+          { response: 'IN' }, { response: 'IN +2' }, { response: 'IN + 1' }, { response: 'IN +0' }, { response: 'OUT' }
+        ] }.as_json)
 
       expect(sms_client).to receive(:send_sms)
         .with(message: "#{in_count} are in, #{out_count} are out. Reply #{DECISION_ON_RESPONSE} or #{DECISION_OFF_RESPONSE}",
-              reply_callback: "http://example.com/event_decision_reply?selected_list_id=#{selected_list_id}&in_count=#{in_count}&event_creator=#{send_to}",
+              reply_callback: "http://grouptext-api-TEST.com/event_decision_reply?selected_list_id=#{selected_list_id}&in_count=#{in_count}&event_creator=#{send_to}",
               to: send_to)
 
       EventRepliesJob.perform_now(message_id: message_id, selected_list_id: selected_list_id, send_to: send_to)

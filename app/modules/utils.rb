@@ -1,7 +1,7 @@
 module Utils
   def event_reply?(str)
-    # https://rubular.com/r/rHK1ewNZmk1Jlr
-    str.downcase.strip.match?(/\A(in|out)\s*\d*\z/i)
+    # https://rubular.com/r/iU3PDgY1ABPZHq
+    str.downcase.strip.match?(/\A(in|out)\s*\+?\s*\d*\z/i)
   end
 
   def keyword_reply?(str)
