@@ -51,6 +51,16 @@ class SmsClient
       )
     end
 
+    def read_sms(message_id:)
+      request(
+        http_method: :post,
+        endpoint: 'get-sms.json',
+        params: {
+          message_id: message_id
+        }
+      )
+    end
+
     private
 
     def client

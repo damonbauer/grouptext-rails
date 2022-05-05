@@ -4,6 +4,9 @@ require 'chronic'
 
 # Handles the various messages in the event flow
 class MessagesController < ApplicationController
+  include Utils
+  include ActionView::Helpers::DateHelper
+
   # Executed when a user texts in "CREATE EVENT" to the number provided by BurstSMS.
   # This is triggered by a "Forward to URL" option on the "CREATE EVENT" keyword in BurstSMS.
   # This is the controller action that starts the entire chain.
@@ -58,7 +61,6 @@ class MessagesController < ApplicationController
   # * messages_params[:event_creator] The phone number of the user who created the event
   def create_event_details_replies
     subject, time, location, deadline = parse_event_details_response
-
     deadline ||= 'in 2 hours'
 
     message = SmsClient.send_sms_to_list(
@@ -67,7 +69,33 @@ class MessagesController < ApplicationController
       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}"
     )
 
+    SmsClient.send_sms(
+      message: "Reply STATUS #{message['message_id']} to get current IN/OUT count",
+      to: messages_params[:event_creator]
+    )
+
     enqueue_event_replies_job(deadline: deadline, message_id: message['message_id'])
+
+    head :no_content
+  end
+
+  def create_event_status
+    message_id = Utils.strip_nondigits(messages_params[:response]).to_i
+
+    in_count, out_count = Utils.collect_counts_for_message_id(message_id).values_at(:in, :out)
+
+    event_response = SmsClient.read_sms(message_id: message_id)
+    parsed_deadline = status_request_deadline(event_response)
+    message_reply = if parsed_deadline.past?
+                      "This event is in the past. There were #{in_count} in and #{out_count} out."
+                    else
+                      "Current status: #{in_count} are in, #{out_count} are out. Deadline is in #{distance_of_time_in_words_to_now(parsed_deadline)}."
+                    end
+
+    SmsClient.send_sms(
+      message: message_reply,
+      to: messages_params[:mobile]
+    )
 
     head :no_content
   end
@@ -83,14 +111,16 @@ class MessagesController < ApplicationController
   def event_decision_reply
     return unless acceptable_decision_response?
 
-    message = if messages_params[:response].downcase.strip == DECISION_ON_RESPONSE.downcase
-                "We have #{messages_params[:in_count]} committed to play, Game is ON!"
-              elsif messages_params[:response].downcase.strip == DECISION_OFF_RESPONSE.downcase
-                'We do not have enough people committed to play. Game is OFF, enjoy your day!'
-              end
+    decision = messages_params[:response].downcase.strip
+
+    message_reply = if decision == DECISION_ON_RESPONSE.downcase
+                      "We have #{messages_params[:in_count]} committed to play, Game is ON!"
+                    else
+                      'We do not have enough people committed to play. Game is OFF, enjoy your day!'
+                    end
 
     SmsClient.send_sms_to_list(list_id: messages_params[:selected_list_id],
-                               message: message,
+                               message: message_reply,
                                reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
 
     head :no_content
@@ -132,6 +162,16 @@ class MessagesController < ApplicationController
 
   def acceptable_decision_response?
     [DECISION_ON_RESPONSE, DECISION_OFF_RESPONSE].map!(&:downcase).include?(messages_params[:response].downcase.strip)
+  end
+
+  # Used when a user requests the status of an event.
+  # Gets the deadline from the original event & parses it relative to when the status request message was sent.
+  # @param [Object] event_response The response body returned by SmsClient.read_sms
+  # @return [DateTime] The deadline, offset by the time the status was requested
+  def status_request_deadline(event_response)
+    event_deadline = event_response['message'].split('Deadline to reply is ')[1]
+    event_sent_at = DateTime.parse(event_response['send_at']).to_time
+    Chronic.parse(event_deadline, { now: event_sent_at })
   end
 
   def messages_params

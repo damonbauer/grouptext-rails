@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe 'Messages' do
-  let(:sms_client) { class_double('SmsClient').as_stubbed_const }
-  let(:event_replies_job) { class_double('EventRepliesJob').as_stubbed_const }
+  let(:sms_client) { class_double(SmsClient).as_stubbed_const }
+  let(:event_replies_job) { class_double(EventRepliesJob).as_stubbed_const }
 
   describe 'GET /create_event' do
     describe 'when params do not include a response' do
@@ -16,6 +16,78 @@ RSpec.describe 'Messages' do
                                                       to: mobile.to_s)
 
         get create_event_url({ mobile: mobile })
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+  end
+
+  describe 'GET /create_event_status' do
+    let(:utils) { class_double(Utils).as_stubbed_const }
+
+    describe 'when the event is in the past' do
+      it 'sends an "event in the past" message back' do
+        # force date to 05/15/2022
+        # deadline is "in 5 days"; message was sent at "05/05/2022"
+        travel_to Time.utc(2022, 5, 15, 6, 45, 33)
+        message_id = 123456789
+        status_message_body = "STATUS #{message_id}"
+        event_message_body = "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 5 days"
+        mobile = 55555555555
+        in_count = 2
+        out_count = 1
+
+        expect(Utils).to receive(:strip_nondigits)
+          .with(status_message_body)
+          .and_return(message_id)
+
+        expect(Utils).to receive(:collect_counts_for_message_id)
+          .with(message_id)
+          .and_return({ in: in_count, out: out_count })
+
+        expect(sms_client).to receive(:read_sms)
+          .with(message_id: message_id)
+          .and_return({ message: event_message_body, "send_at": '2022-05-05 06:45:33' }.as_json)
+
+        expect(sms_client).to receive(:send_sms).with(message: "This event is in the past. There were #{in_count} in and #{out_count} out.",
+                                                      to: mobile.to_s)
+
+        get create_event_status_url({ mobile: mobile, response: status_message_body })
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
+    describe 'when the event is in the future' do
+      it 'sends a status message back' do
+        # force date to 05/05/2022 10:45:33
+        # event deadline is "in 8 hours";
+        # status message request was sent at "05/05/2022 08:45:33" (2 hours later) leaving 6 hours until deadline
+        travel_to Time.utc(2022, 5, 5, 10, 45, 33)
+
+        message_id = 123456789
+        status_message_body = "STATUS #{message_id}"
+        event_message_body = "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 8 hours"
+        mobile = 55555555555
+        in_count = 2
+        out_count = 1
+
+        expect(Utils).to receive(:strip_nondigits)
+          .with(status_message_body)
+          .and_return(message_id)
+
+        expect(Utils).to receive(:collect_counts_for_message_id)
+          .with(message_id)
+          .and_return({ in: in_count, out: out_count })
+
+        expect(sms_client).to receive(:read_sms)
+          .with(message_id: message_id)
+          .and_return({ message: event_message_body, "send_at": '2022-05-05 08:45:33' }.as_json) # send_at is 2 hours after `travel_to` call
+
+        expect(sms_client).to receive(:send_sms).with(message: "Current status: #{in_count} are in, #{out_count} are out. Deadline is in about 6 hours.",
+                                                      to: mobile.to_s)
+
+        get create_event_status_url({ mobile: mobile, response: status_message_body })
 
         expect(response).to have_http_status(:no_content)
       end
@@ -56,7 +128,7 @@ RSpec.describe 'Messages' do
   end
 
   describe 'GET /create_event_details_replies' do
-    describe 'when the event deadline cannot is not provided' do
+    describe 'when the event deadline is not provided' do
       it 'parses response, sends a message to the provided list with a fallback deadline, enqueues EventRepliesJob' do
         freeze_time
 
@@ -70,6 +142,11 @@ RSpec.describe 'Messages' do
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
         ).and_return({ message_id: message_id }.as_json)
 
+        expect(sms_client).to receive(:send_sms).with(
+          message: "Reply STATUS #{message_id} to get current IN/OUT count",
+          to: event_creator
+        )
+
         expect(event_replies_job).to receive_message_chain(:set, :perform_later).with(wait_until: 2.hours.from_now).with(message_id: message_id, selected_list_id: selected_list_id, send_to: event_creator)
 
         get create_event_details_replies_url({ event_creator: event_creator,
@@ -80,7 +157,7 @@ RSpec.describe 'Messages' do
       end
     end
 
-    it 'parses response, sends a message to the provided list with a fallback deadline, enqueues EventRepliesJob' do
+    it 'parses response, sends a message to the provided list with a provided deadline, enqueues EventRepliesJob' do
       freeze_time
 
       event_creator = '55555555555'
@@ -93,7 +170,16 @@ RSpec.describe 'Messages' do
         reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
       ).and_return({ message_id: message_id }.as_json)
 
-      expect(event_replies_job).to receive_message_chain(:set, :perform_later).with(wait_until: 5.days.from_now).with(message_id: message_id, selected_list_id: selected_list_id, send_to: event_creator)
+      expect(sms_client).to receive(:send_sms).with(
+        message: "Reply STATUS #{message_id} to get current IN/OUT count",
+        to: event_creator
+      )
+
+      expect(event_replies_job).to receive_message_chain(:set, :perform_later)
+        .with(wait_until: 5.days.from_now)
+        .with(message_id: message_id,
+              selected_list_id: selected_list_id,
+              send_to: event_creator)
 
       get create_event_details_replies_url({ event_creator: event_creator,
                                              response: 'SUBJECT;TIME;LOCATION;in 5 days',

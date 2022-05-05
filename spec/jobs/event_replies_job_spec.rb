@@ -2,7 +2,8 @@
 
 RSpec.describe EventRepliesJob do
   describe '.perform' do
-    let(:sms_client) { class_double('SmsClient').as_stubbed_const }
+    let(:sms_client) { class_double(SmsClient).as_stubbed_const }
+    let(:utils) { class_double(Utils).as_stubbed_const }
 
     it 'retrieves responses for the provided message and sends a message prompting the event creator for a decision' do
       ActiveJob::Base.queue_adapter = :test
@@ -13,11 +14,9 @@ RSpec.describe EventRepliesJob do
       in_count = 7
       out_count = 1
 
-      expect(sms_client).to receive(:sms_responses_for_message)
-        .with(message_id: message_id)
-        .and_return({ responses: [
-          { response: 'IN' }, { response: 'IN +2' }, { response: 'IN + 1' }, { response: 'IN +0' }, { response: 'OUT' }
-        ] }.as_json)
+      expect(Utils).to receive(:collect_counts_for_message_id)
+        .with(message_id)
+        .and_return({ in: in_count, out: out_count })
 
       expect(sms_client).to receive(:send_sms)
         .with(message: "#{in_count} are in, #{out_count} are out. Reply #{DECISION_ON_RESPONSE} or #{DECISION_OFF_RESPONSE}",

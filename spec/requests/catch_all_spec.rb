@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe 'CatchAll' do
-  let(:sms_client) { class_double('SmsClient').as_stubbed_const }
+  let(:sms_client) { class_double(SmsClient).as_stubbed_const }
 
   describe 'GET /catch_all' do
     describe 'when params do not include a response' do

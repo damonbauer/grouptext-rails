@@ -43,7 +43,9 @@ class CatchAllController < ApplicationController
   end
 
   def ignore?
-    empty_response? || keyword_reply?(catch_all_params[:response]) || event_reply?(catch_all_params[:response])
+    empty_response? ||
+      Utils.keyword_reply?(catch_all_params[:response]) ||
+      Utils.event_reply?(catch_all_params[:response])
   end
 
   def catch_all_params
