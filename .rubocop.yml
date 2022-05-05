@@ -9,6 +9,10 @@ Metrics/BlockLength:
   Exclude:
     - spec/**/*
 
+Layout/MethodLength:
+  CountAsOne: ['array', 'hash', 'heredoc']
+  Max: 20
+
 Style/NumericLiterals:
   Enabled: false
 
