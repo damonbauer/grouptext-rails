@@ -70,7 +70,7 @@ class MessagesController < ApplicationController
     )
 
     SmsClient.send_sms(
-      message: "Reply STATUS #{message['message_id']} to get current IN/OUT count",
+      message: "Sent! Reply STATUS #{message['message_id']} to get current IN/OUT count",
       to: messages_params[:event_creator]
     )
 

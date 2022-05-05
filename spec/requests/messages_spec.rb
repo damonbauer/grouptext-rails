@@ -143,7 +143,7 @@ RSpec.describe 'Messages' do
         ).and_return({ message_id: message_id }.as_json)
 
         expect(sms_client).to receive(:send_sms).with(
-          message: "Reply STATUS #{message_id} to get current IN/OUT count",
+          message: "Sent! Reply STATUS #{message_id} to get current IN/OUT count",
           to: event_creator
         )
 
@@ -171,7 +171,7 @@ RSpec.describe 'Messages' do
       ).and_return({ message_id: message_id }.as_json)
 
       expect(sms_client).to receive(:send_sms).with(
-        message: "Reply STATUS #{message_id} to get current IN/OUT count",
+        message: "Sent! Reply STATUS #{message_id} to get current IN/OUT count",
         to: event_creator
       )
 
