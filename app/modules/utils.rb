@@ -17,7 +17,7 @@ module Utils
     # @return { :in => Integer, :out => Integer }
     def collect_counts_for_message_id(message_id)
       api_response = SmsClient.sms_responses_for_message(message_id: message_id)
-      responses = api_response['responses']
+      responses = api_response['responses'] ||= []
       counts = { in: 0, out: 0 }
 
       event_replies(responses).each_with_object(counts) do |curr, acc|
