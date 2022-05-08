@@ -109,15 +109,24 @@ class MessagesController < ApplicationController
   # * messages_params[:selected_list_id] The list chosen by the user who created the event
   # * messages_params[:event_creator] The phone number of the user who created the event
   def event_decision_reply
+    Rails.logger.info "event_decision_reply BEFORE RETURN: #{messages_params[:response]}"
+
     return unless acceptable_decision_response?
 
+    Rails.logger.info "event_decision_reply AFTER RETURN: #{messages_params[:response]}"
     decision = messages_params[:response].downcase.strip
 
+    Rails.logger.info "event_decision_reply decision: #{decision}"
+
     message_reply = if decision == DECISION_ON_RESPONSE.downcase
+                      Rails.logger.debug 'event_decision_reply INSIDE IF'
                       "We have #{messages_params[:in_count]} committed to play, Game is ON!"
                     else
+                      Rails.logger.debug 'event_decision_reply INSIDE ELSE'
                       'We do not have enough people committed to play. Game is OFF, enjoy your day!'
                     end
+
+    Rails.logger.info "event_decision_reply send_sms_to_list: messages_params[:selected_list_id]: #{messages_params[:selected_list_id]}, message_reply: #{message_reply}, reply_callback: #{catch_all_url}?event_creator=#{messages_params[:event_creator]}"
 
     SmsClient.send_sms_to_list(list_id: messages_params[:selected_list_id],
                                message: message_reply,
