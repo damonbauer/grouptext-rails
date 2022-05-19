@@ -12,6 +12,8 @@ NOT_KEYWORD_REPLIES = ['', ' ', '  ', 'create', 'make', 'text', 'rocks', 'event'
 RSpec.describe Utils do
   include Utils
 
+  let(:sms_client) { class_double(SmsClient).as_stubbed_const }
+
   describe '.event_reply?' do
     NOT_EVENT_REPLIES.each do |reply|
       it "properly identifies \"#{reply}\" as `false`" do
@@ -58,8 +60,6 @@ RSpec.describe Utils do
   end
 
   describe '.collect_counts_for_message_id' do
-    let(:sms_client) { class_double(SmsClient).as_stubbed_const }
-
     it 'returns the number of IN/OUT responses for a message' do
       message_id = 12345
 
@@ -75,6 +75,47 @@ RSpec.describe Utils do
         ] }.as_json)
 
       expect(Utils.collect_counts_for_message_id(message_id)).to eq({ in: 7, out: 1 })
+    end
+  end
+
+  describe '.lists_for_display' do
+    it 'returns a concatenated string of list names' do
+      expect(sms_client).to receive(:lists)
+        .and_return({ lists: [
+          { name: 'List A' },
+          { name: 'List B' },
+          { name: 'List C' }
+        ] }.as_json)
+
+      expect(Utils.lists_for_display).to eq('List A, List B, List C')
+    end
+  end
+
+  describe '.find_list_id_matching_name' do
+    describe 'when a matching list name is found' do
+      it 'returns the list ID' do
+        expect(sms_client).to receive(:lists)
+          .and_return({ lists: [
+            { id: 1, name: 'List A' },
+            { id: 2, name: 'List B' },
+            { id: 3, name: 'List C' }
+          ] }.as_json)
+
+        expect(Utils.find_list_id_matching_name('LIST B')).to eq(2)
+      end
+    end
+
+    describe 'when a matching list name cannot be found' do
+      it 'returns nil' do
+        expect(sms_client).to receive(:lists)
+          .and_return({ lists: [
+            { id: 1, name: 'List A' },
+            { id: 2, name: 'List B' },
+            { id: 3, name: 'List C' }
+          ] }.as_json)
+
+        expect(Utils.find_list_id_matching_name('NON MATCHING LIST NAME')).to be_nil
+      end
     end
   end
 end

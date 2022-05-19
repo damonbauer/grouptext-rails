@@ -14,10 +14,8 @@ class MessagesController < ApplicationController
   # params:
   # * messages_params[:mobile] The phone number of the user who created the event
   def create_event
-    lists_for_display = SmsClient.lists['lists'].map { |list| list['name'] }.join(', ')
-
     SmsClient.send_sms(
-      message: "What list would you like to send to? Reply with one of: #{lists_for_display}",
+      message: "What list would you like to send to? Reply with one of: #{Utils.lists_for_display}",
       reply_callback: create_event_replies_url,
       to: messages_params[:mobile]
     )
@@ -31,7 +29,7 @@ class MessagesController < ApplicationController
   # params:
   # * messages_params[:mobile] The phone number of the user who created the event
   def create_event_replies
-    matching_list_id = find_list_id_matching_reply
+    matching_list_id = Utils.find_list_id_matching_name(messages_params[:response])
 
     unless matching_list_id
       SmsClient.send_sms(
@@ -127,14 +125,6 @@ class MessagesController < ApplicationController
   end
 
   private
-
-  # Used to find a BurstSMS list ID
-  # Fetches all lists from BurstSMS, compares list names against user provided value
-  # @return Integer|nil List ID that matches the list name (provided by user)
-  def find_list_id_matching_reply
-    list = SmsClient.lists['lists'].find { |l| l['name'].downcase == messages_params[:response].downcase.strip }
-    list.nil? ? nil : list['id']
-  end
 
   # Responsible for breaking event details response up by delimiter (whitespace removed)
   # @return [Array] Chunked event details

@@ -34,6 +34,20 @@ module Utils
       str.gsub(/\D/, '')
     end
 
+    # Fetch & display lists for the account
+    # @return [String] A concatenated string of list names
+    def lists_for_display
+      SmsClient.lists['lists'].map { |list| list['name'] }.join(', ')
+    end
+
+    # Used to find a BurstSMS list ID
+    # Fetches all lists from BurstSMS, compares list names against user provided value
+    # @return Integer|Nil List ID that matches the list name (provided by user)
+    def find_list_id_matching_name(list_name)
+      list = SmsClient.lists['lists'].find { |l| l['name'].downcase == list_name.downcase.strip }
+      list.nil? ? nil : list['id']
+    end
+
     private
 
     # Takes a string & removes anything that's not a digit.
