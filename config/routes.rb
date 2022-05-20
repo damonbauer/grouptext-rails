@@ -9,4 +9,6 @@ Rails.application.routes.draw do
   get '/event_decision_reply', to: 'messages#event_decision_reply'
 
   get '/catch_all', to: 'catch_all#handle'
+
+  post '/donation-webhook', to: 'donations#webhook'
 end
