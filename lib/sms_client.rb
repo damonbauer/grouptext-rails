@@ -41,12 +41,14 @@ class SmsClient
       )
     end
 
+    # TODO: Refactor this to allow for actual pagination. Hardcoding limit = 100 is a cheap hack
     def sms_responses_for_message(message_id:)
       request(
         http_method: :post,
         endpoint: 'get-sms-responses.json',
         params: {
-          message_id: message_id
+          message_id: message_id,
+          limit: 100
         }
       )
     end
@@ -69,7 +71,7 @@ class SmsClient
         client.request :authorization, :basic, ENV['TRANSMIT_API_BASIC_AUTH_USERNAME'], ENV['TRANSMIT_API_BASIC_AUTH_PASSWORD']
         client.request :url_encoded
         client.response :json
-        client.response :logger, nil, { headers: true, bodies: true }
+        client.response :logger, nil, { headers: true, bodies: true } unless Rails.env.test?
         client.response :raise_error
       end
     end

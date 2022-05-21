@@ -87,7 +87,7 @@ RSpec.describe SmsClient do
 
       stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-sms-responses.json")
              .with(
-               body: { message_id: message_id },
+               body: { limit: 100, message_id: message_id },
                headers: headers
              )
 
