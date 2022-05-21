@@ -1,12 +1,8 @@
-Sentry.init do |config|
-  config.breadcrumbs_logger = %i[active_support_logger http_logger]
-  config.dsn = ENV['SENTRY_DSN']
+# frozen_string_literal: true
 
-  # To activate performance monitoring, set one of these options.
-  # We recommend adjusting the value in production:
-  config.traces_sample_rate = 1.0
-  # or
-  # config.traces_sampler = lambda do |context|
-  #   true
-  # end
+Sentry.init do |config|
+  config.breadcrumbs_logger = %i[http_logger monotonic_active_support_logger sentry_logger]
+  config.dsn = ENV['SENTRY_DSN']
+  config.send_default_pii = true
+  config.traces_sample_rate = 0.5
 end

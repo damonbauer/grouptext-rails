@@ -65,15 +65,20 @@ class SmsClient
 
     def client
       @client ||= Faraday.new(ENV['TRANSMIT_API_BASIC_AUTH_URL']) do |client|
-        client.request :url_encoded
         client.adapter :net_http
         client.request :authorization, :basic, ENV['TRANSMIT_API_BASIC_AUTH_USERNAME'], ENV['TRANSMIT_API_BASIC_AUTH_PASSWORD']
+        client.request :url_encoded
+        client.response :json
+        client.response :logger, nil, { headers: true, bodies: true }
+        client.response :raise_error
       end
     end
 
     def request(http_method:, endpoint:, params: {})
       response = client.public_send(http_method, endpoint, params)
-      Oj.load(response.body)
+      response.body
+    rescue Faraday::Error => e
+      Sentry.capture_exception(e)
     end
   end
 end
