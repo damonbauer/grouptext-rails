@@ -25,6 +25,22 @@ RSpec.describe 'Messages' do
   describe 'GET /create_event_status' do
     let(:utils) { class_double(Utils).as_stubbed_const }
 
+    describe 'when an event ID is not provided' do
+      it 'sends a "try again" message back' do
+        mobile = 55555555555
+        status_message_body = 'STATUS'
+
+        expect(Utils).to receive(:strip_nondigits).with(status_message_body).and_return(nil)
+        expect(Utils).not_to receive(:collect_counts_for_message_id)
+
+        expect(sms_client).to receive(:send_sms).with(message: 'Please request a status with an ID.', to: mobile.to_s)
+
+        get create_event_status_url({ mobile: mobile, response: status_message_body })
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
     describe 'when the event is in the past' do
       it 'sends an "event in the past" message back' do
         # force date to 05/15/2022

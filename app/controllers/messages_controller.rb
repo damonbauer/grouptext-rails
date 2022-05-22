@@ -78,11 +78,20 @@ class MessagesController < ApplicationController
   end
 
   def create_event_status
-    message_id = Utils.strip_nondigits(messages_params[:response]).to_i
+    message_id = Utils.strip_nondigits(messages_params[:response])
 
-    in_count, out_count = Utils.collect_counts_for_message_id(message_id).values_at(:in, :out)
+    unless message_id
+      SmsClient.send_sms(
+        message: 'Please request a status with an ID.',
+        to: messages_params[:mobile]
+      )
 
-    event_response = SmsClient.read_sms(message_id: message_id)
+      return
+    end
+
+    in_count, out_count = Utils.collect_counts_for_message_id(message_id.to_i).values_at(:in, :out)
+
+    event_response = SmsClient.read_sms(message_id: message_id.to_i)
     parsed_deadline = status_request_deadline(event_response)
     message_reply = if parsed_deadline.past?
                       "This event is in the past. There were #{in_count} in and #{out_count} out."
