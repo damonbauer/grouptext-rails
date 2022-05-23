@@ -111,4 +111,33 @@ RSpec.describe SmsClient do
       expect(stub).to have_been_requested
     end
   end
+
+  describe '.recipients_for_message' do
+    it 'gets a list of recipients for a message' do
+      message_id = 98765
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-sms-sent.json")
+             .with(
+               body: { limit: 100, list_id: '', message_id: message_id },
+               headers: headers
+             )
+
+      SmsClient.recipients_for_message(message_id: message_id)
+
+      expect(stub).to have_been_requested
+    end
+  end
+
+  describe 'when a request fails' do
+    let(:sentry) { class_double(Sentry).as_stubbed_const }
+
+    it 'logs an exception' do
+      expect(sentry).to receive(:capture_exception).with(Faraday::UnauthorizedError)
+
+      stub_request(:get, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-lists.json")
+        .with(headers: headers)
+        .to_return({ status: 401 })
+
+      SmsClient.lists
+    end
+  end
 end

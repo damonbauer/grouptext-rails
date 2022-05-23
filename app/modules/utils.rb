@@ -28,6 +28,15 @@ module Utils
       end
     end
 
+    # # Responsible for getting the phones numbers of those who did not reply "OUT" for an event
+    # # @param [Integer] message_id ID of the message to get counts for
+    # # @return [String] A comma-delimited string of numbers who replied "IN" or did not reply
+    def event_decision_audience(message_id:)
+      event_recipients = message_recipients_numbers(message_id: message_id)
+      out_numbers = collect_out_numbers_for_message_id(message_id: message_id)
+      (event_recipients - out_numbers).join(',')
+    end
+
     # @param [String] str The string to strip
     # @return [String] The number(s) found in the string
     def strip_nondigits(str)
@@ -66,6 +75,27 @@ module Utils
     # @return Array<Object> An array of response objects that match
     def event_replies(unfiltered_response)
       unfiltered_response.select { |response| event_reply?(response['response']) }
+    end
+
+    # Responsible for getting the phones numbers of those who replied "OUT" for an event
+    # @param [Integer] message_id ID of the message to get counts for
+    # @return String[] An array of numbers who replied "OUT"
+    def collect_out_numbers_for_message_id(message_id:)
+      api_response = SmsClient.sms_responses_for_message(message_id: message_id)
+      responses = api_response['responses'] ||= []
+
+      event_replies(responses).select { |reply| reply['response'].downcase.strip.start_with?(ACCEPTABLE_REPLIES.second) }
+                              .map { |reply| reply['msisdn'] }
+    end
+
+    # Responsible for getting the phones numbers of those who received a CREATE EVENT message
+    # @param [Integer] message_id ID of the message to recipients for
+    # @return String[] An array of recipients numbers
+    def message_recipients_numbers(message_id:)
+      api_response = SmsClient.recipients_for_message(message_id: message_id)
+      recipients = api_response['recipients'] ||= []
+
+      recipients.map { |recipient| recipient['msisdn'] }
     end
   end
 end

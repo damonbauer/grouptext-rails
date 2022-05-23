@@ -63,6 +63,19 @@ class SmsClient
       )
     end
 
+    # TODO: Refactor this to allow for actual pagination. Hardcoding limit = 100 is a cheap hack
+    def recipients_for_message(message_id:, list_id: '')
+      request(
+        http_method: :post,
+        endpoint: 'get-sms-sent.json',
+        params: {
+          message_id: message_id,
+          list_id: list_id,
+          limit: 100
+        }
+      )
+    end
+
     private
 
     def client

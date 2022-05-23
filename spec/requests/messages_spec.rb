@@ -23,8 +23,6 @@ RSpec.describe 'Messages' do
   end
 
   describe 'GET /create_event_status' do
-    let(:utils) { class_double(Utils).as_stubbed_const }
-
     describe 'when an event ID is not provided' do
       it 'sends a "try again" message back' do
         mobile = 55555555555
@@ -207,19 +205,24 @@ RSpec.describe 'Messages' do
 
   describe 'GET /event_decision_reply' do
     describe 'when event creator responds with DECISION_ON_RESPONSE' do
-      it 'sends the appropriate message to the selected list' do
+      it 'sends the appropriate message to users who did not reply or replied with "IN"' do
         event_creator = '55555555555'
         selected_list_id = '12345'
+        to_list = '1111111111,2222222222,3333333333'
         in_count = 9
+        message_id = '123456789'
 
-        expect(sms_client).to receive(:send_sms_to_list).with(
-          list_id: selected_list_id,
+        expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
+
+        expect(sms_client).to receive(:send_sms).with(
+          to: to_list,
           message: "We have #{in_count} committed to play, Game is ON!",
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
         )
 
         get event_decision_reply_url({
                                        event_creator: event_creator,
+                                       event_message_id: message_id,
                                        in_count: in_count,
                                        response: DECISION_ON_RESPONSE,
                                        selected_list_id: selected_list_id
@@ -232,16 +235,21 @@ RSpec.describe 'Messages' do
       it 'sends the appropriate message to the selected list' do
         event_creator = '55555555555'
         selected_list_id = '12345'
+        to_list = '1111111111,2222222222,3333333333'
         in_count = 9
+        message_id = '123456789'
 
-        expect(sms_client).to receive(:send_sms_to_list).with(
-          list_id: selected_list_id,
+        expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
+
+        expect(sms_client).to receive(:send_sms).with(
+          to: to_list,
           message: 'We do not have enough people committed to play. Game is OFF, enjoy your day!',
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
         )
 
         get event_decision_reply_url({
                                        event_creator: event_creator,
+                                       event_message_id: message_id,
                                        in_count: in_count,
                                        response: DECISION_OFF_RESPONSE,
                                        selected_list_id: selected_list_id

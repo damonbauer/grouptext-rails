@@ -118,4 +118,33 @@ RSpec.describe Utils do
       end
     end
   end
+
+  describe '.event_decision_audience' do
+    it 'filters "OUT" responses and only keeps "IN" responses or those who didn\'t respond' do
+      message_id = 12345
+
+      expect(sms_client).to receive(:recipients_for_message)
+        .with(message_id: message_id)
+        .and_return({ recipients: [
+          { msisdn: 1111111111 },
+          { msisdn: 2222222222  },
+          { msisdn: 3333333333  },
+          { msisdn: 4444444444  },
+          { msisdn: 5555555555  }
+        ] }.as_json)
+
+      expect(sms_client).to receive(:sms_responses_for_message)
+        .with(message_id: message_id)
+        .and_return({
+          responses: [
+            { msisdn: 1111111111, response: 'IN' },
+            { msisdn: 2222222222, response: 'OUT' },
+            { msisdn: 4444444444, response: 'OUT' },
+            { msisdn: 5555555555, response: 'IN +2' }
+          ]
+        }.as_json)
+
+      expect(Utils.event_decision_audience(message_id: message_id)).to eql('1111111111,3333333333,5555555555')
+    end
+  end
 end

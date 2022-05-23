@@ -110,15 +110,19 @@ class MessagesController < ApplicationController
   # Executed as a callback to the message sent in EventRepliesJob#perform
   # The corresponding URL for this action is set as a `reply_callback` to the message sent in EventRepliesJob#perform
   #
+  # Sends the decision reply to everyone on the list who did not reply "OUT" to the event.
+  #
   # params:
   # * messages_params[:response] The body of the SMS
   # * messages_params[:in_count] The number of "IN" responses collected
+  # * messages_params[:event_message_id] The message ID that users replied IN/OUT to
   # * messages_params[:selected_list_id] The list chosen by the user who created the event
   # * messages_params[:event_creator] The phone number of the user who created the event
   def event_decision_reply
     return unless acceptable_decision_response?
 
     decision = messages_params[:response].downcase.strip
+    audience = Utils.event_decision_audience(message_id: messages_params[:event_message_id])
 
     message_reply = if decision == DECISION_ON_RESPONSE.downcase
                       "We have #{messages_params[:in_count]} committed to play, Game is ON!"
@@ -126,9 +130,9 @@ class MessagesController < ApplicationController
                       'We do not have enough people committed to play. Game is OFF, enjoy your day!'
                     end
 
-    SmsClient.send_sms_to_list(list_id: messages_params[:selected_list_id],
-                               message: message_reply,
-                               reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
+    SmsClient.send_sms(to: audience,
+                       message: message_reply,
+                       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
 
     head :no_content
   end
