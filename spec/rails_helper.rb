@@ -4,6 +4,7 @@
 require 'simplecov'
 SimpleCov.start 'rails' do
   add_group 'Modules', '/app/modules/'
+  enable_coverage :branch
 end
 
 require 'spec_helper'
