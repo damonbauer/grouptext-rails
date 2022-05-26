@@ -148,7 +148,7 @@ RSpec.describe 'Messages' do
               to: '1111111111,2222222222,3333333333')
 
       expect(sms_client).to receive(:send_sms)
-        .with(message: 'Nudge sent to 3 people',
+        .with(message: 'Nudge sent to 3 people.',
               to: mobile.to_s)
 
       get nudge_url({ mobile: mobile, response: nudge_message_body })

@@ -131,22 +131,6 @@ RSpec.describe SmsClient do
     end
   end
 
-  describe '.sms_responses_for_message' do
-    it 'retrieves responses for the provided message ID' do
-      message_id = 98765
-
-      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-sms-responses.json")
-             .with(
-               body: { limit: 100, message_id: message_id },
-               headers: headers
-             )
-
-      SmsClient.sms_responses_for_message(message_id: message_id)
-
-      expect(stub).to have_been_requested
-    end
-  end
-
   describe '.read_sms' do
     it 'gets the details of a single message' do
       message_id = 98765

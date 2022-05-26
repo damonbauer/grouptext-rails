@@ -36,7 +36,8 @@ module Utils
     # @return [String] A comma-delimited string of numbers who replied "IN" or did not reply
     def event_decision_audience(message_id:)
       event_recipients = message_recipients_numbers(message_id: message_id)
-      out_numbers = collect_out_numbers_for_message_id(message_id: message_id)
+      message = SmsClient.read_sms(message_id: message_id)
+      out_numbers = out_numbers(start_date: message['send_at'])
       (event_recipients - out_numbers).join(',')
     end
 
@@ -45,7 +46,8 @@ module Utils
     # @return [String] A comma-delimited string of numbers who have not replied
     def nudge_audience(message_id:)
       event_recipients = message_recipients_numbers(message_id: message_id)
-      event_respondents = collect_message_respondents_numbers(message_id: message_id)
+      message = SmsClient.read_sms(message_id: message_id)
+      event_respondents = event_respondents_numbers(start_date: message['send_at'])
       (event_recipients - event_respondents).join(',')
     end
 
@@ -90,25 +92,28 @@ module Utils
     end
 
     # Responsible for getting the phones numbers of those who replied "OUT" for an event
-    # @param [Integer] message_id ID of the message to get counts for
+    # @param [String] start_date When to start looking for messages
     # @return String[] An array of numbers who replied "OUT"
-    def collect_out_numbers_for_message_id(message_id:)
-      responses = message_responses(message_id)
+    def out_numbers(start_date:)
+      responses = timeframe_responses(start_date: start_date)
 
-      event_replies(responses).select { |reply| reply['response'].downcase.strip.start_with?(ACCEPTABLE_REPLIES.second) }
-                              .map { |reply| reply['msisdn'] }
+      collection = event_replies(responses)
+                   .select { |reply| reply['response'].downcase.strip.start_with?(ACCEPTABLE_REPLIES.second) }
+
+      collect_numbers(collection)
     end
 
     # Responsible for getting the phones numbers of those who replied to a CREATE EVENT message with "IN" or "OUT"
-    # @param [Integer] message_id ID of the message
+    # @param [String] start_date When to start looking for messages
     # @return String[] An array of respondents numbers
-    def collect_message_respondents_numbers(message_id:)
-      responses = message_responses(message_id)
-      event_replies(responses).map { |reply| reply['msisdn'] }
+    def event_respondents_numbers(start_date:)
+      responses = timeframe_responses(start_date: start_date)
+      collection = event_replies(responses)
+      collect_numbers(collection)
     end
 
-    def message_responses(message_id)
-      api_response = SmsClient.sms_responses_for_message(message_id: message_id)
+    def timeframe_responses(start_date: nil, end_date: nil)
+      api_response = SmsClient.sms_responses_for_timeframe(start_date: start_date, end_date: end_date)
       api_response['responses'] ||= []
     end
 
@@ -119,7 +124,11 @@ module Utils
       api_response = SmsClient.recipients_for_message(message_id: message_id)
       recipients = api_response['recipients'] ||= []
 
-      recipients.map { |recipient| recipient['msisdn'] }
+      collect_numbers(recipients)
+    end
+
+    def collect_numbers(collection)
+      collection.map { |el| el['msisdn'] }
     end
   end
 end

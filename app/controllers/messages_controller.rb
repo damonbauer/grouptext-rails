@@ -119,7 +119,7 @@ class MessagesController < ApplicationController
                        reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:mobile]}")
 
     SmsClient.send_sms(
-      message: "Nudge sent to #{audience_count} people",
+      message: "Nudge sent to #{audience_count} people.",
       to: messages_params[:mobile]
     )
   end

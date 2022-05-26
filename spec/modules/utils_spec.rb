@@ -121,8 +121,9 @@ RSpec.describe Utils do
   end
 
   describe '.event_decision_audience' do
-    it 'filters "OUT" responses and only keeps "IN" responses or those who didn\'t respond' do
+    it 'filters "OUT" responses, keeping only "IN" responses & those who did not respond' do
       message_id = 12345
+      message_sent_at = '2022-05-26 06:35:00'
 
       expect(sms_client).to receive(:recipients_for_message)
         .with(message_id: message_id)
@@ -134,8 +135,10 @@ RSpec.describe Utils do
           { msisdn: 5555555555  }
         ] }.as_json)
 
-      expect(sms_client).to receive(:sms_responses_for_message)
-        .with(message_id: message_id)
+      expect(sms_client).to receive(:read_sms).with(message_id: message_id).and_return({ send_at: message_sent_at }.as_json)
+
+      expect(sms_client).to receive(:sms_responses_for_timeframe)
+        .with(start_date: message_sent_at, end_date: nil)
         .and_return({
           responses: [
             { msisdn: 1111111111, response: 'IN' },
@@ -152,6 +155,7 @@ RSpec.describe Utils do
   describe '.nudge_audience' do
     it 'returns a list of numbers who have not responded to a message' do
       message_id = 12345
+      message_sent_at = '2022-05-26 06:35:00'
 
       expect(sms_client).to receive(:recipients_for_message)
         .with(message_id: message_id)
@@ -163,15 +167,15 @@ RSpec.describe Utils do
           { msisdn: 5555555555  }
         ] }.as_json)
 
-      expect(sms_client).to receive(:sms_responses_for_message)
-        .with(message_id: message_id)
-        .and_return({
-          responses: [
-            { msisdn: 3333333333, response: 'OUT' },
-            { msisdn: 4444444444, response: 'OUT' },
-            { msisdn: 5555555555, response: 'IN +2' }
-          ]
-        }.as_json)
+      expect(sms_client).to receive(:read_sms).with(message_id: message_id).and_return({ send_at: message_sent_at }.as_json)
+
+      expect(sms_client).to receive(:sms_responses_for_timeframe).with(start_date: message_sent_at, end_date: nil).and_return({
+        responses: [
+          { msisdn: 3333333333, response: 'OUT' },
+          { msisdn: 4444444444, response: 'OUT' },
+          { msisdn: 5555555555, response: 'IN +2' }
+        ]
+      }.as_json)
 
       expect(Utils.nudge_audience(message_id: message_id)).to eql('1111111111,2222222222')
     end
