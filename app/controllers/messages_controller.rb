@@ -19,8 +19,6 @@ class MessagesController < ApplicationController
       reply_callback: create_event_replies_url,
       to: messages_params[:mobile]
     )
-
-    head :no_content
   end
 
   # Executed when the event creator responds with a list name to send an event to.
@@ -46,8 +44,6 @@ class MessagesController < ApplicationController
       reply_callback: "#{create_event_details_replies_url}?selected_list_id=#{matching_list_id}&event_creator=#{messages_params[:mobile]}",
       to: messages_params[:mobile]
     )
-
-    head :no_content
   end
 
   # Executed when the event creator responds with event details.
@@ -68,13 +64,11 @@ class MessagesController < ApplicationController
     )
 
     SmsClient.send_sms(
-      message: "Sent! Reply STATUS #{message['message_id']} to get current IN/OUT count",
+      message: "Sent! Reply: STATUS #{message['message_id']} to get current IN/OUT count;\nNUDGE #{message['message_id']} to follow up with non-respondents",
       to: messages_params[:event_creator]
     )
 
-    enqueue_event_replies_job(deadline: deadline, message_id: message['message_id'])
-
-    head :no_content
+    enqueue_event_replies_job(deadline: deadline, message_id: message['message_id'], message_sent_at: message['send_at'])
   end
 
   def create_event_status
@@ -89,10 +83,10 @@ class MessagesController < ApplicationController
       return
     end
 
-    in_count, out_count = Utils.collect_counts_for_message_id(message_id.to_i).values_at(:in, :out)
-
     event_response = SmsClient.read_sms(message_id: message_id.to_i)
     parsed_deadline = status_request_deadline(event_response)
+    in_count, out_count = Utils
+                          .collect_counts_for_timeframe(start_date: event_response['send_at']).values_at(:in, :out)
     message_reply = if parsed_deadline.past?
                       "This event is in the past. There were #{in_count} in and #{out_count} out."
                     else
@@ -103,8 +97,31 @@ class MessagesController < ApplicationController
       message: message_reply,
       to: messages_params[:mobile]
     )
+  end
 
-    head :no_content
+  def nudge
+    message_id = Utils.strip_nondigits(messages_params[:response])
+
+    unless message_id
+      SmsClient.send_sms(
+        message: 'Please supply a message ID so we can nudge the correct people.',
+        to: messages_params[:mobile]
+      )
+
+      return
+    end
+
+    audience = Utils.nudge_audience(message_id: message_id.to_i)
+    audience_count = audience.split(',').length
+
+    SmsClient.send_sms(to: audience,
+                       message: "Hey there. We haven't gotten a reply from you yet. Reply IN, IN +1/+2/+3/+#, OUT, or STOP.",
+                       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:mobile]}")
+
+    SmsClient.send_sms(
+      message: "Nudge sent to #{audience_count} people",
+      to: messages_params[:mobile]
+    )
   end
 
   # Executed as a callback to the message sent in EventRepliesJob#perform
@@ -133,8 +150,6 @@ class MessagesController < ApplicationController
     SmsClient.send_sms(to: audience,
                        message: message_reply,
                        reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
-
-    head :no_content
   end
 
   private
@@ -155,10 +170,12 @@ class MessagesController < ApplicationController
   # Responsible to queuing up the EventRepliesJob.
   # @param [String] deadline The deadline provided by the user
   # @param [Integer] message_id ID of the message to tie to the job
+  # @param [String] message_sent_at ISO-8601 string when the message was sent
   # @return nil
-  def enqueue_event_replies_job(deadline:, message_id:)
+  def enqueue_event_replies_job(deadline:, message_id:, message_sent_at:)
     EventRepliesJob.set(wait_until: parsed_deadline(deadline))
                    .perform_later(message_id: message_id,
+                                  message_sent_at: message_sent_at,
                                   selected_list_id: messages_params[:selected_list_id],
                                   send_to: messages_params[:event_creator])
   end

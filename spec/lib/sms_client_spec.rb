@@ -81,6 +81,56 @@ RSpec.describe SmsClient do
     end
   end
 
+  describe '.sms_responses_for_timeframe' do
+    it 'retrieves responses when a start & end date are not provided' do
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-user-sms-responses.json")
+             .with(
+               body: { limit: 100 },
+               headers: headers
+             )
+
+      SmsClient.sms_responses_for_timeframe
+
+      expect(stub).to have_been_requested
+    end
+
+    it 'retrieves responses when only a start date is provided' do
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-user-sms-responses.json")
+             .with(
+               body: { limit: 100, start: '2022-05-25 19:07:00' },
+               headers: headers
+             )
+
+      SmsClient.sms_responses_for_timeframe(start_date: '2022-05-25 19:07:00')
+
+      expect(stub).to have_been_requested
+    end
+
+    it 'retrieves responses when only an end date is provided' do
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-user-sms-responses.json")
+             .with(
+               body: { limit: 100, end: '2022-05-25 19:07:00' },
+               headers: headers
+             )
+
+      SmsClient.sms_responses_for_timeframe(end_date: '2022-05-25 19:07:00')
+
+      expect(stub).to have_been_requested
+    end
+
+    it 'retrieves responses when both a start & end date are provided' do
+      stub = stub_request(:post, "#{ENV['TRANSMIT_API_BASIC_AUTH_URL']}/get-user-sms-responses.json")
+             .with(
+               body: { limit: 100, end: '2022-05-25 19:07:00', start: '2022-05-20 04:05:33' },
+               headers: headers
+             )
+
+      SmsClient.sms_responses_for_timeframe(start_date: '2022-05-20 04:05:33', end_date: '2022-05-25 19:07:00')
+
+      expect(stub).to have_been_requested
+    end
+  end
+
   describe '.sms_responses_for_message' do
     it 'retrieves responses for the provided message ID' do
       message_id = 98765

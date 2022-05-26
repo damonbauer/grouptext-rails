@@ -28,8 +28,6 @@ class CatchAllController < ApplicationController
         reply_callback: "#{catch_all_url}?is_catch_all_reply=true&send_response_to=#{catch_all_params[:mobile]}"
       )
     end
-
-    head :no_content
   end
 
   private

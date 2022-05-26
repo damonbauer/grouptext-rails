@@ -42,6 +42,17 @@ class SmsClient
     end
 
     # TODO: Refactor this to allow for actual pagination. Hardcoding limit = 100 is a cheap hack
+    def sms_responses_for_timeframe(start_date: nil, end_date: nil)
+      params = { limit: 100, start: start_date, end: end_date }
+
+      request(
+        http_method: :post,
+        endpoint: 'get-user-sms-responses.json',
+        params: params.compact
+      )
+    end
+
+    # TODO: Refactor this to allow for actual pagination. Hardcoding limit = 100 is a cheap hack
     def sms_responses_for_message(message_id:)
       request(
         http_method: :post,

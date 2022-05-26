@@ -6,6 +6,7 @@ Rails.application.routes.draw do
   get '/create_event_replies', to: 'messages#create_event_replies'
   get '/create_event_details_replies', to: 'messages#create_event_details_replies'
   get '/create_event_status', to: 'messages#create_event_status'
+  get '/nudge', to: 'messages#nudge'
   get '/event_decision_reply', to: 'messages#event_decision_reply'
 
   get '/catch_all', to: 'catch_all#handle'

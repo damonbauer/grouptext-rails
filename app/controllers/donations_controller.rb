@@ -13,8 +13,6 @@ class DonationsController < ApplicationController
       message: "#{donor_name} donated #{amount}",
       to: ENV['ADMIN_MOBILE']
     )
-
-    head :no_content
   end
 
   private

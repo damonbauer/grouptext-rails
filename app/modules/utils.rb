@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'date'
+
 # Helper methods that don't belong in controllers or jobs
 module Utils
   class << self
@@ -13,10 +15,11 @@ module Utils
     end
 
     # Responsible for counting the number of "IN" and "OUT" responses for an event
-    # @param [Integer] message_id ID of the message to get counts for
     # @return { :in => Integer, :out => Integer }
-    def collect_counts_for_message_id(message_id)
-      api_response = SmsClient.sms_responses_for_message(message_id: message_id)
+    # @param [String] start_date The start of the date range to look for responses
+    # @param [String] end_date The end of the date range to look for responses
+    def collect_counts_for_timeframe(start_date: nil, end_date: nil)
+      api_response = SmsClient.sms_responses_for_timeframe(start_date: start_date, end_date: end_date)
       responses = api_response['responses'] ||= []
       counts = { in: 0, out: 0 }
 
@@ -28,13 +31,22 @@ module Utils
       end
     end
 
-    # # Responsible for getting the phones numbers of those who did not reply "OUT" for an event
-    # # @param [Integer] message_id ID of the message to get counts for
-    # # @return [String] A comma-delimited string of numbers who replied "IN" or did not reply
+    # Responsible for getting the phones numbers of those who did not reply "OUT" for an event
+    # @param [Integer] message_id ID of the message to get counts for
+    # @return [String] A comma-delimited string of numbers who replied "IN" or did not reply
     def event_decision_audience(message_id:)
       event_recipients = message_recipients_numbers(message_id: message_id)
       out_numbers = collect_out_numbers_for_message_id(message_id: message_id)
       (event_recipients - out_numbers).join(',')
+    end
+
+    # Responsible for getting the phones numbers of those who have not replied to an event
+    # @param [Integer] message_id ID of the message to nudge for
+    # @return [String] A comma-delimited string of numbers who have not replied
+    def nudge_audience(message_id:)
+      event_recipients = message_recipients_numbers(message_id: message_id)
+      event_respondents = collect_message_respondents_numbers(message_id: message_id)
+      (event_recipients - event_respondents).join(',')
     end
 
     # @param [String] str The string to strip
@@ -81,11 +93,23 @@ module Utils
     # @param [Integer] message_id ID of the message to get counts for
     # @return String[] An array of numbers who replied "OUT"
     def collect_out_numbers_for_message_id(message_id:)
-      api_response = SmsClient.sms_responses_for_message(message_id: message_id)
-      responses = api_response['responses'] ||= []
+      responses = message_responses(message_id)
 
       event_replies(responses).select { |reply| reply['response'].downcase.strip.start_with?(ACCEPTABLE_REPLIES.second) }
                               .map { |reply| reply['msisdn'] }
+    end
+
+    # Responsible for getting the phones numbers of those who replied to a CREATE EVENT message with "IN" or "OUT"
+    # @param [Integer] message_id ID of the message
+    # @return String[] An array of respondents numbers
+    def collect_message_respondents_numbers(message_id:)
+      responses = message_responses(message_id)
+      event_replies(responses).map { |reply| reply['msisdn'] }
+    end
+
+    def message_responses(message_id)
+      api_response = SmsClient.sms_responses_for_message(message_id: message_id)
+      api_response['responses'] ||= []
     end
 
     # Responsible for getting the phones numbers of those who received a CREATE EVENT message

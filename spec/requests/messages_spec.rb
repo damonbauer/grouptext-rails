@@ -29,7 +29,7 @@ RSpec.describe 'Messages' do
         status_message_body = 'STATUS'
 
         expect(Utils).to receive(:strip_nondigits).with(status_message_body).and_return(nil)
-        expect(Utils).not_to receive(:collect_counts_for_message_id)
+        expect(Utils).not_to receive(:collect_counts_for_timeframe)
 
         expect(sms_client).to receive(:send_sms).with(message: 'Please request a status with an ID.', to: mobile.to_s)
 
@@ -45,6 +45,7 @@ RSpec.describe 'Messages' do
         # deadline is "in 5 days"; message was sent at "05/05/2022"
         travel_to Time.utc(2022, 5, 15, 6, 45, 33)
         message_id = 123456789
+        message_send_at = '2022-05-05 06:45:33'
         status_message_body = "STATUS #{message_id}"
         event_message_body = "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 5 days"
         mobile = 55555555555
@@ -55,13 +56,14 @@ RSpec.describe 'Messages' do
           .with(status_message_body)
           .and_return(message_id)
 
-        expect(Utils).to receive(:collect_counts_for_message_id)
-          .with(message_id)
-          .and_return({ in: in_count, out: out_count })
-
         expect(sms_client).to receive(:read_sms)
           .with(message_id: message_id)
-          .and_return({ message: event_message_body, "send_at": '2022-05-05 06:45:33' }.as_json)
+          .and_return({ message: event_message_body,
+                        send_at: message_send_at }.as_json)
+
+        expect(Utils).to receive(:collect_counts_for_timeframe)
+          .with(start_date: message_send_at)
+          .and_return({ in: in_count, out: out_count })
 
         expect(sms_client).to receive(:send_sms).with(message: "This event is in the past. There were #{in_count} in and #{out_count} out.",
                                                       to: mobile.to_s)
@@ -80,6 +82,7 @@ RSpec.describe 'Messages' do
         travel_to Time.utc(2022, 5, 5, 10, 45, 33)
 
         message_id = 123456789
+        message_send_at = '2022-05-05 08:45:33'
         status_message_body = "STATUS #{message_id}"
         event_message_body = "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 8 hours"
         mobile = 55555555555
@@ -90,13 +93,14 @@ RSpec.describe 'Messages' do
           .with(status_message_body)
           .and_return(message_id)
 
-        expect(Utils).to receive(:collect_counts_for_message_id)
-          .with(message_id)
-          .and_return({ in: in_count, out: out_count })
-
         expect(sms_client).to receive(:read_sms)
           .with(message_id: message_id)
-          .and_return({ message: event_message_body, "send_at": '2022-05-05 08:45:33' }.as_json) # send_at is 2 hours after `travel_to` call
+          .and_return({ message: event_message_body,
+                        send_at: message_send_at }.as_json) # send_at is 2 hours after `travel_to` call
+
+        expect(Utils).to receive(:collect_counts_for_timeframe)
+          .with(start_date: message_send_at)
+          .and_return({ in: in_count, out: out_count })
 
         expect(sms_client).to receive(:send_sms).with(message: "Current status: #{in_count} are in, #{out_count} are out. Deadline is in about 6 hours.",
                                                       to: mobile.to_s)
@@ -105,6 +109,51 @@ RSpec.describe 'Messages' do
 
         expect(response).to have_http_status(:no_content)
       end
+    end
+  end
+
+  describe 'GET /nudge' do
+    describe 'when an event ID is not provided' do
+      it 'sends a "try again" message back' do
+        mobile = 55555555555
+        status_message_body = 'NUDGE'
+
+        expect(Utils).to receive(:strip_nondigits).with(status_message_body).and_return(nil)
+        expect(Utils).not_to receive(:nudge_audience)
+
+        expect(sms_client).to receive(:send_sms).with(message: 'Please supply a message ID so we can nudge the correct people.', to: mobile.to_s)
+
+        get nudge_url({ mobile: mobile, response: status_message_body })
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
+
+    it 'sends a message to non-respondents' do
+      message_id = 123456789
+      nudge_message_body = "NUDGE #{message_id}"
+      mobile = 55555555555
+
+      expect(Utils).to receive(:strip_nondigits)
+        .with(nudge_message_body)
+        .and_return(message_id)
+
+      expect(Utils).to receive(:nudge_audience)
+        .with(message_id: message_id)
+        .and_return('1111111111,2222222222,3333333333')
+
+      expect(sms_client).to receive(:send_sms)
+        .with(message: "Hey there. We haven't gotten a reply from you yet. Reply IN, IN +1/+2/+3/+#, OUT, or STOP.",
+              reply_callback: "#{catch_all_url}?event_creator=#{mobile}",
+              to: '1111111111,2222222222,3333333333')
+
+      expect(sms_client).to receive(:send_sms)
+        .with(message: 'Nudge sent to 3 people',
+              to: mobile.to_s)
+
+      get nudge_url({ mobile: mobile, response: nudge_message_body })
+
+      expect(response).to have_http_status(:no_content)
     end
   end
 
@@ -148,20 +197,26 @@ RSpec.describe 'Messages' do
 
         event_creator = '55555555555'
         message_id = 99999
+        message_sent_at = '2022-05-25 18:34:00'
         selected_list_id = '12345'
 
         expect(sms_client).to receive(:send_sms_to_list).with(
           list_id: selected_list_id,
           message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 2 hours",
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
-        ).and_return({ message_id: message_id }.as_json)
+        ).and_return({ message_id: message_id, send_at: message_sent_at }.as_json)
 
         expect(sms_client).to receive(:send_sms).with(
-          message: "Sent! Reply STATUS #{message_id} to get current IN/OUT count",
+          message: "Sent! Reply: STATUS #{message_id} to get current IN/OUT count;\nNUDGE #{message_id} to follow up with non-respondents",
           to: event_creator
         )
 
-        expect(event_replies_job).to receive_message_chain(:set, :perform_later).with(wait_until: 2.hours.from_now).with(message_id: message_id, selected_list_id: selected_list_id, send_to: event_creator)
+        expect(event_replies_job).to receive_message_chain(:set, :perform_later)
+          .with(wait_until: 2.hours.from_now)
+          .with(message_id: message_id,
+                message_sent_at: message_sent_at,
+                selected_list_id: selected_list_id,
+                send_to: event_creator)
 
         get create_event_details_replies_url({ event_creator: event_creator,
                                                response: 'SUBJECT;TIME;LOCATION',
@@ -176,22 +231,27 @@ RSpec.describe 'Messages' do
 
       event_creator = '55555555555'
       message_id = 99999
+      message_sent_at = '2022-05-25 19:15:00'
       selected_list_id = '12345'
 
       expect(sms_client).to receive(:send_sms_to_list).with(
         list_id: selected_list_id,
         message: "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is in 5 days",
         reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
-      ).and_return({ message_id: message_id }.as_json)
+      ).and_return({
+        message_id: message_id,
+        send_at: message_sent_at
+      }.as_json)
 
       expect(sms_client).to receive(:send_sms).with(
-        message: "Sent! Reply STATUS #{message_id} to get current IN/OUT count",
+        message: "Sent! Reply: STATUS #{message_id} to get current IN/OUT count;\nNUDGE #{message_id} to follow up with non-respondents",
         to: event_creator
       )
 
       expect(event_replies_job).to receive_message_chain(:set, :perform_later)
         .with(wait_until: 5.days.from_now)
         .with(message_id: message_id,
+              message_sent_at: message_sent_at,
               selected_list_id: selected_list_id,
               send_to: event_creator)
 
