@@ -140,6 +140,7 @@ class MessagesController < ApplicationController
 
     decision = messages_params[:response].downcase.strip
     audience = Utils.event_decision_audience(message_id: messages_params[:event_message_id])
+    audience_count = audience.split(',').length
 
     message_reply = if decision == DECISION_ON_RESPONSE.downcase
                       "We have #{messages_params[:in_count]} committed to play, Game is ON!"
@@ -150,6 +151,9 @@ class MessagesController < ApplicationController
     SmsClient.send_sms(to: audience,
                        message: message_reply,
                        reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
+
+    SmsClient.send_sms(to: messages_params[:event_creator],
+                       message: "Sent #{messages_params[:response]} to #{audience_count} people.")
   end
 
   private
@@ -190,8 +194,14 @@ class MessagesController < ApplicationController
   # @return [DateTime] The deadline, offset by the time the status was requested
   def status_request_deadline(event_response)
     event_deadline = event_response['message'].split('Deadline to reply is ')[1]
+
+    # There's been a case where the message came in as "..., OUT, or STOP. Deadline to reply is 10 hours".
+    # The problem: `chronic` couldn't properly parse "`10 hours`". We need the "in" prefix.
+    # This is a stop-gap, because you can do other prefixes (such as "at" or "on") and you can do suffixes...
+    # but for now this "works"
+    sanitized_event_deadline = event_deadline.start_with?('in') ? event_deadline : "in #{event_deadline}"
     event_sent_at = DateTime.parse(event_response['send_at']).to_time
-    Chronic.parse(event_deadline, { now: event_sent_at })
+    Chronic.parse(sanitized_event_deadline, { now: event_sent_at })
   end
 
   def messages_params

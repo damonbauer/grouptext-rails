@@ -110,6 +110,43 @@ RSpec.describe 'Messages' do
         expect(response).to have_http_status(:no_content)
       end
     end
+
+    describe 'when the event deadline does not start with "in"' do
+      it 'ensures a deadline can be parsed & sends a status message back' do
+        # force date to 05/05/2022 10:45:33
+        # event deadline is "8 hours";
+        # status message request was sent at "05/05/2022 08:45:33" (2 hours later) leaving 6 hours until deadline
+        travel_to Time.utc(2022, 5, 5, 10, 45, 33)
+
+        message_id = 123456789
+        message_send_at = '2022-05-05 08:45:33'
+        status_message_body = "STATUS #{message_id}"
+        event_message_body = "Who's IN for SUBJECT TIME at LOCATION? Reply IN, IN +1/+2/+3/+#, OUT, or STOP. Deadline to reply is 8 hours"
+        mobile = 55555555555
+        in_count = 2
+        out_count = 1
+
+        expect(Utils).to receive(:strip_nondigits)
+          .with(status_message_body)
+          .and_return(message_id)
+
+        expect(sms_client).to receive(:read_sms)
+          .with(message_id: message_id)
+          .and_return({ message: event_message_body,
+                        send_at: message_send_at }.as_json) # send_at is 2 hours after `travel_to` call
+
+        expect(Utils).to receive(:collect_counts_for_timeframe)
+          .with(start_date: message_send_at)
+          .and_return({ in: in_count, out: out_count })
+
+        expect(sms_client).to receive(:send_sms).with(message: "Current status: #{in_count} are in, #{out_count} are out. Deadline is in about 6 hours.",
+                                                      to: mobile.to_s)
+
+        get create_event_status_url({ mobile: mobile, response: status_message_body })
+
+        expect(response).to have_http_status(:no_content)
+      end
+    end
   end
 
   describe 'GET /nudge' do
@@ -269,7 +306,7 @@ RSpec.describe 'Messages' do
         event_creator = '55555555555'
         selected_list_id = '12345'
         to_list = '1111111111,2222222222,3333333333'
-        in_count = 9
+        in_count = 3
         message_id = '123456789'
 
         expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
@@ -278,6 +315,11 @@ RSpec.describe 'Messages' do
           to: to_list,
           message: "We have #{in_count} committed to play, Game is ON!",
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
+        )
+
+        expect(sms_client).to receive(:send_sms).with(
+          to: event_creator,
+          message: "Sent #{DECISION_ON_RESPONSE} to #{in_count} people."
         )
 
         get event_decision_reply_url({
@@ -296,7 +338,7 @@ RSpec.describe 'Messages' do
         event_creator = '55555555555'
         selected_list_id = '12345'
         to_list = '1111111111,2222222222,3333333333'
-        in_count = 9
+        in_count = 3
         message_id = '123456789'
 
         expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
@@ -305,6 +347,11 @@ RSpec.describe 'Messages' do
           to: to_list,
           message: 'We do not have enough people committed to play. Game is OFF, enjoy your day!',
           reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
+        )
+
+        expect(sms_client).to receive(:send_sms).with(
+          to: event_creator,
+          message: "Sent #{DECISION_OFF_RESPONSE} to #{in_count} people."
         )
 
         get event_decision_reply_url({
