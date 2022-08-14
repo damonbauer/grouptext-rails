@@ -10,7 +10,6 @@ RSpec.describe EventRepliesJob do
 
       message_id = 99999
       message_sent_at = '2022-05-25 19:12:00'
-      selected_list_id = 123456
       send_to = 55555555555
       in_count = 7
       out_count = 1
@@ -20,11 +19,10 @@ RSpec.describe EventRepliesJob do
         .and_return({ in: in_count, out: out_count })
 
       expect(sms_client).to receive(:send_sms)
-        .with(message: "#{in_count} are in, #{out_count} are out. Reply #{DECISION_ON_RESPONSE} or #{DECISION_OFF_RESPONSE}",
-              reply_callback: "http://#{ENV['HEROKU_APP_NAME']}.herokuapp.com/event_decision_reply?selected_list_id=#{selected_list_id}&event_message_id=#{message_id}&in_count=#{in_count}&event_creator=#{send_to}",
+        .with(message: "#{in_count} are in, #{out_count} are out. Reply #{DECISION_ON_RESPONSE} #{message_id} or #{DECISION_OFF_RESPONSE} #{message_id}",
               to: send_to)
 
-      EventRepliesJob.perform_now(message_id: message_id, message_sent_at: message_sent_at, selected_list_id: selected_list_id, send_to: send_to)
+      EventRepliesJob.perform_now(message_id: message_id, message_sent_at: message_sent_at, send_to: send_to)
     end
   end
 end

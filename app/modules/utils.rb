@@ -32,7 +32,7 @@ module Utils
     end
 
     # Responsible for getting the phones numbers of those who did not reply "OUT" for an event
-    # @param [Integer] message_id ID of the message to get counts for
+    # @param [String] message_id ID of the message to get counts for
     # @return [String] A comma-delimited string of numbers who replied "IN" or did not reply
     def event_decision_audience(message_id:)
       event_recipients = message_recipients_numbers(message_id: message_id)
@@ -42,7 +42,7 @@ module Utils
     end
 
     # Responsible for getting the phones numbers of those who have not replied to an event
-    # @param [Integer] message_id ID of the message to nudge for
+    # @param [String] message_id ID of the message to nudge for
     # @return [String] A comma-delimited string of numbers who have not replied
     def nudge_audience(message_id:)
       event_recipients = message_recipients_numbers(message_id: message_id)
@@ -55,6 +55,12 @@ module Utils
     # @return [String] The number(s) found in the string
     def strip_nondigits(str)
       str.gsub(/\D/, '')
+    end
+
+    # @param [String] str The string to strip
+    # @return [String] The string with all digits removed
+    def strip_digits(str)
+      str.gsub(/\d/, '')
     end
 
     # Fetch & display lists for the account
@@ -118,7 +124,7 @@ module Utils
     end
 
     # Responsible for getting the phones numbers of those who received a CREATE EVENT message
-    # @param [Integer] message_id ID of the message to recipients for
+    # @param [String] message_id ID of the message to recipients for
     # @return String[] An array of recipients numbers
     def message_recipients_numbers(message_id:)
       api_response = SmsClient.recipients_for_message(message_id: message_id)

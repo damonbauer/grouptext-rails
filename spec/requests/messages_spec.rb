@@ -252,7 +252,6 @@ RSpec.describe 'Messages' do
           .with(wait_until: 2.hours.from_now)
           .with(message_id: message_id,
                 message_sent_at: message_sent_at,
-                selected_list_id: selected_list_id,
                 send_to: event_creator)
 
         get create_event_details_replies_url({ event_creator: event_creator,
@@ -289,7 +288,6 @@ RSpec.describe 'Messages' do
         .with(wait_until: 5.days.from_now)
         .with(message_id: message_id,
               message_sent_at: message_sent_at,
-              selected_list_id: selected_list_id,
               send_to: event_creator)
 
       get create_event_details_replies_url({ event_creator: event_creator,
@@ -300,69 +298,68 @@ RSpec.describe 'Messages' do
     end
   end
 
-  describe 'GET /event_decision_reply' do
-    describe 'when event creator responds with DECISION_ON_RESPONSE' do
-      it 'sends the appropriate message to users who did not reply or replied with "IN"' do
-        event_creator = '55555555555'
-        selected_list_id = '12345'
-        to_list = '1111111111,2222222222,3333333333'
-        in_count = 3
-        message_id = '123456789'
+  describe 'GET /event_decision_off' do
+    it 'sends the appropriate message to users who did not reply or replied with "IN"' do
+      event_creator = '55555555555'
+      audience = '1111111111,2222222222,3333333333'
+      in_count = 3
+      message_id = '123456789'
+      message_body = 'game canceled 123456789'
 
-        expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
+      expect(Utils).to receive(:strip_nondigits).with(message_body).and_return(message_id)
+      expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(audience)
 
-        expect(sms_client).to receive(:send_sms).with(
-          to: to_list,
-          message: "We have #{in_count} committed to play, Game is ON!",
-          reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
-        )
+      expect(sms_client).to receive(:send_sms).with(
+        to: audience,
+        message: 'We do not have enough people committed to play. Game is OFF, enjoy your day!',
+        reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
+      )
 
-        expect(sms_client).to receive(:send_sms).with(
-          to: event_creator,
-          message: "Sent #{DECISION_ON_RESPONSE} to #{in_count} people."
-        )
+      expect(sms_client).to receive(:send_sms).with(
+        to: event_creator,
+        message: "Sent #{DECISION_OFF_RESPONSE} to #{in_count} people."
+      )
 
-        get event_decision_reply_url({
-                                       event_creator: event_creator,
-                                       event_message_id: message_id,
-                                       in_count: in_count,
-                                       response: DECISION_ON_RESPONSE,
-                                       selected_list_id: selected_list_id
-                                     })
-        expect(response).to have_http_status(:no_content)
-      end
+      get event_decision_off_url({ mobile: event_creator, response: message_body })
+
+      expect(response).to have_http_status(:no_content)
     end
+  end
 
-    describe 'when event creator responds with DECISION_OFF_RESPONSE' do
-      it 'sends the appropriate message to the selected list' do
-        event_creator = '55555555555'
-        selected_list_id = '12345'
-        to_list = '1111111111,2222222222,3333333333'
-        in_count = 3
-        message_id = '123456789'
+  describe 'GET /event_decision_on' do
+    it 'sends the appropriate message to users who did not reply or replied with "IN"' do
+      event_creator = '55555555555'
+      audience = '1111111111,2222222222,3333333333'
+      in_count = 3
+      message_id = '123456789'
+      message_send_at = '2022-05-05 06:45:33'
+      message_body = 'game on 123456789'
 
-        expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(to_list)
+      expect(Utils).to receive(:strip_nondigits).with(message_body).and_return(message_id)
+      expect(Utils).to receive(:event_decision_audience).with(message_id: message_id).and_return(audience)
 
-        expect(sms_client).to receive(:send_sms).with(
-          to: to_list,
-          message: 'We do not have enough people committed to play. Game is OFF, enjoy your day!',
-          reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
-        )
+      expect(sms_client).to receive(:read_sms)
+        .with(message_id: message_id)
+        .and_return({ send_at: message_send_at }.as_json)
 
-        expect(sms_client).to receive(:send_sms).with(
-          to: event_creator,
-          message: "Sent #{DECISION_OFF_RESPONSE} to #{in_count} people."
-        )
+      expect(Utils).to receive(:collect_counts_for_timeframe)
+        .with(start_date: message_send_at)
+        .and_return({ in: in_count })
 
-        get event_decision_reply_url({
-                                       event_creator: event_creator,
-                                       event_message_id: message_id,
-                                       in_count: in_count,
-                                       response: DECISION_OFF_RESPONSE,
-                                       selected_list_id: selected_list_id
-                                     })
-        expect(response).to have_http_status(:no_content)
-      end
+      expect(sms_client).to receive(:send_sms).with(
+        to: audience,
+        message: "We have #{in_count} committed to play, Game is ON!",
+        reply_callback: "#{catch_all_url}?event_creator=#{event_creator}"
+      )
+
+      expect(sms_client).to receive(:send_sms).with(
+        to: event_creator,
+        message: "Sent #{DECISION_ON_RESPONSE} to #{in_count} people."
+      )
+
+      get event_decision_on_url({ mobile: event_creator, response: message_body })
+
+      expect(response).to have_http_status(:no_content)
     end
   end
 end

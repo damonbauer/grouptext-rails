@@ -61,6 +61,23 @@ RSpec.describe Utils do
     end
   end
 
+  describe '.strip_digits' do
+    [
+      ['abc 123', 'abc '],
+      ['STATUS 999888', 'STATUS '],
+      ['IN 4', 'IN '],
+      ['IN +2', 'IN +'],
+      ['4533', ''],
+      ['no digits', 'no digits'],
+      ['$$#$%**', '$$#$%**'],
+      ['$%)(*(22)_+<<<', '$%)(*()_+<<<']
+    ].each do |test|
+      it 'properly returns only digits' do
+        expect(Utils.strip_digits(test[0])).to eql(test[1])
+      end
+    end
+  end
+
   describe '.collect_counts_for_timeframe' do
     it 'returns the number of IN/OUT responses for a given timeframe' do
       expect(sms_client).to receive(:sms_responses_for_timeframe)
@@ -124,7 +141,7 @@ RSpec.describe Utils do
 
   describe '.event_decision_audience' do
     it 'filters "OUT" responses, keeping only "IN" responses & those who did not respond' do
-      message_id = 12345
+      message_id = '12345'
       message_sent_at = '2022-05-26 06:35:00'
 
       expect(sms_client).to receive(:recipients_for_message)

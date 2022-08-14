@@ -111,7 +111,7 @@ class MessagesController < ApplicationController
       return
     end
 
-    audience = Utils.nudge_audience(message_id: message_id.to_i)
+    audience = Utils.nudge_audience(message_id: message_id)
     audience_count = audience.split(',').length
 
     SmsClient.send_sms(to: audience,
@@ -124,36 +124,49 @@ class MessagesController < ApplicationController
     )
   end
 
-  # Executed as a callback to the message sent in EventRepliesJob#perform
-  # The corresponding URL for this action is set as a `reply_callback` to the message sent in EventRepliesJob#perform
-  #
-  # Sends the decision reply to everyone on the list who did not reply "OUT" to the event.
+  # Sends the "GAME ON" decision reply to everyone on the list who did not reply "OUT" to the event.
   #
   # params:
   # * messages_params[:response] The body of the SMS
-  # * messages_params[:in_count] The number of "IN" responses collected
-  # * messages_params[:event_message_id] The message ID that users replied IN/OUT to
-  # * messages_params[:selected_list_id] The list chosen by the user who created the event
-  # * messages_params[:event_creator] The phone number of the user who created the event
-  def event_decision_reply
+  # * messages_params[:mobile] The phone number of the user who replied with the event decision
+  def event_decision_on
     return unless acceptable_decision_response?
 
-    decision = messages_params[:response].downcase.strip
-    audience = Utils.event_decision_audience(message_id: messages_params[:event_message_id])
+    event_message_id = Utils.strip_nondigits(messages_params[:response].downcase.strip)
+    event_message_sent_at = SmsClient.read_sms(message_id: event_message_id)['send_at']
+
+    audience = Utils.event_decision_audience(message_id: event_message_id)
     audience_count = audience.split(',').length
 
-    message_reply = if decision == DECISION_ON_RESPONSE.downcase
-                      "We have #{messages_params[:in_count]} committed to play, Game is ON!"
-                    else
-                      'We do not have enough people committed to play. Game is OFF, enjoy your day!'
-                    end
+    in_count, = Utils.collect_counts_for_timeframe(start_date: event_message_sent_at)
+                     .values_at(:in)
 
     SmsClient.send_sms(to: audience,
-                       message: message_reply,
-                       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:event_creator]}")
+                       message: "We have #{in_count} committed to play, Game is ON!",
+                       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:mobile]}")
 
-    SmsClient.send_sms(to: messages_params[:event_creator],
-                       message: "Sent #{messages_params[:response]} to #{audience_count} people.")
+    SmsClient.send_sms(to: messages_params[:mobile],
+                       message: "Sent #{DECISION_ON_RESPONSE} to #{audience_count} people.")
+  end
+
+  # Sends the "GAME OFF" decision reply to everyone on the list who did not reply "OUT" to the event.
+  #
+  # params:
+  # * messages_params[:response] The body of the SMS
+  # * messages_params[:mobile] The phone number of the user who replied with the event decision
+  def event_decision_off
+    return unless acceptable_decision_response?
+
+    event_message_id = Utils.strip_nondigits(messages_params[:response].downcase.strip)
+    audience = Utils.event_decision_audience(message_id: event_message_id)
+    audience_count = audience.split(',').length
+
+    SmsClient.send_sms(to: audience,
+                       message: 'We do not have enough people committed to play. Game is OFF, enjoy your day!',
+                       reply_callback: "#{catch_all_url}?event_creator=#{messages_params[:mobile]}")
+
+    SmsClient.send_sms(to: messages_params[:mobile],
+                       message: "Sent #{DECISION_OFF_RESPONSE} to #{audience_count} people.")
   end
 
   private
@@ -180,12 +193,12 @@ class MessagesController < ApplicationController
     EventRepliesJob.set(wait_until: parsed_deadline(deadline))
                    .perform_later(message_id: message_id,
                                   message_sent_at: message_sent_at,
-                                  selected_list_id: messages_params[:selected_list_id],
                                   send_to: messages_params[:event_creator])
   end
 
   def acceptable_decision_response?
-    [DECISION_ON_RESPONSE, DECISION_OFF_RESPONSE].map!(&:downcase).include?(messages_params[:response].downcase.strip)
+    body = messages_params[:response].downcase.strip
+    body.start_with?(DECISION_ON_RESPONSE.downcase, DECISION_OFF_RESPONSE.downcase)
   end
 
   # Used when a user requests the status of an event.
